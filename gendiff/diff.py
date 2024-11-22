@@ -1,23 +1,32 @@
-import json
-from typing import Any, Dict
+from gendiff.parser import parse_file
+from gendiff.formatters.stylish import format_stylish
 
 
-def generate_diff(file_path1: str, file_path2: str) -> str:
-    with open(file_path1, 'r') as file1:
-        data1 = json.load(file1)
-    with open(file_path2, 'r') as file2:
-        data2 = json.load(file2)
-    all_keys = sorted(set(data1.keys()).union(data2.keys()))
+def build_diff(data1, data2):
+    keys = sorted(data1.keys() | data2.keys())
+    diff = []
 
-    result = []
-    for key in all_keys:
-        if key in data1 and key not in data2:
-            result.append(f"  - {key}: {data1[key]}")
-        elif key not in data1 and key in data2:
-            result.append(f"  + {key}: {data2[key]}")
+    for key in keys:
+        if key not in data1:
+            diff.append({"key": key, "type": "added", "value": data2[key]})
+        elif key not in data2:
+            diff.append({"key": key, "type": "removed", "value": data1[key]})
+        elif isinstance(data1[key], dict) and isinstance(data2[key], dict):
+            diff.append({"key": key, "type": "nested", "children": build_diff(data1[key], data2[key])})
         elif data1[key] != data2[key]:
-            result.append(f"  - {key}: {data1[key]}")
-            result.append(f"  + {key}: {data2[key]}")
+            diff.append({"key": key, "type": "changed", "old_value": data1[key], "new_value": data2[key]})
         else:
-            result.append(f"    {key}: {data1[key]}")
-    return "{\n" + "\n".join(result) + "\n}"
+            diff.append({"key": key, "type": "unchanged", "value": data1[key]})
+
+    return diff
+
+def generate_diff(file_path1, file_path2, format_name='stylish'):
+    data1 = parse_file(file_path1)
+    data2 = parse_file(file_path2)
+    diff = build_diff(data1, data2)
+
+    if format_name == 'stylish':
+        from gendiff.formatters.stylish import format_stylish
+        return format_stylish(diff)
+    else:
+        raise ValueError(f"Unsupported format: {format_name}")

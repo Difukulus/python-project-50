@@ -13,7 +13,7 @@ def main():
         default='plain'
     )
     args = parser.parse_args()
-    
+
     diff = generate_diff(args.first_file, args.second_file)
     print(diff)
 

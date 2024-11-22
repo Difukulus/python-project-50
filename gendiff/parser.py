@@ -1,8 +1,13 @@
 import json
+import yaml
 
-from typing import Any, Dict
-
-
-def parse_json(filepath: str) -> Dict[str, Any]:
+def parse_file(filepath):
+    extension = filepath.split('.')[-1]
     with open(filepath, 'r') as file:
-        return json.load(file)
+        if extension in ('yml', 'yaml'):
+            return yaml.safe_load(file)
+        elif extension == 'json':
+            return json.load(file)
+        else:
+            raise ValueError(f"Unsupported file format: {extension}")
+    
